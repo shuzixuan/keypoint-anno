@@ -1,0 +1,41 @@
+{
+  "dataset_name": "ap10k",
+  "keypoints": {
+    "0":  {"name": "L_Eye",       "color": [0, 255, 0],    "type": "upper", "swap": "R_Eye"},
+    "1":  {"name": "R_Eye",       "color": [255, 128, 0],  "type": "upper", "swap": "L_Eye"},
+    "2":  {"name": "Nose",        "color": [51, 153, 255], "type": "upper", "swap": ""},
+    "3":  {"name": "Neck",        "color": [51, 153, 255], "type": "upper", "swap": ""},
+    "4":  {"name": "Root of tail","color": [51, 153, 255], "type": "lower", "swap": ""},
+    "5":  {"name": "L_Shoulder",  "color": [51, 153, 255], "type": "upper", "swap": "R_Shoulder"},
+    "6":  {"name": "L_Elbow",     "color": [51, 153, 255], "type": "upper", "swap": "R_Elbow"},
+    "7":  {"name": "L_F_Paw",     "color": [0, 255, 0],    "type": "upper", "swap": "R_F_Paw"},
+    "8":  {"name": "R_Shoulder",  "color": [0, 255, 0],    "type": "upper", "swap": "L_Shoulder"},
+    "9":  {"name": "R_Elbow",     "color": [255, 128, 0],  "type": "upper", "swap": "L_Elbow"},
+    "10": {"name": "R_F_Paw",     "color": [0, 255, 0],    "type": "lower", "swap": "L_F_Paw"},
+    "11": {"name": "L_Hip",       "color": [255, 128, 0],  "type": "lower", "swap": "R_Hip"},
+    "12": {"name": "L_Knee",      "color": [255, 128, 0],  "type": "lower", "swap": "R_Knee"},
+    "13": {"name": "L_B_Paw",     "color": [0, 255, 0],    "type": "lower", "swap": "R_B_Paw"},
+    "14": {"name": "R_Hip",       "color": [0, 255, 0],    "type": "lower", "swap": "L_Hip"},
+    "15": {"name": "R_Knee",      "color": [0, 255, 0],    "type": "lower", "swap": "L_Knee"},
+    "16": {"name": "R_B_Paw",     "color": [0, 255, 0],    "type": "lower", "swap": "L_B_Paw"}
+  },
+  "skeleton": {
+    "0":  {"link": ["L_Eye", "R_Eye"],         "color": [0, 0, 255]},
+    "1":  {"link": ["L_Eye", "Nose"],          "color": [0, 0, 255]},
+    "2":  {"link": ["R_Eye", "Nose"],          "color": [0, 0, 255]},
+    "3":  {"link": ["Nose", "Neck"],           "color": [0, 255, 0]},
+    "4":  {"link": ["Neck", "Root of tail"],   "color": [0, 255, 0]},
+    "5":  {"link": ["Neck", "L_Shoulder"],     "color": [0, 255, 255]},
+    "6":  {"link": ["L_Shoulder", "L_Elbow"],  "color": [0, 255, 255]},
+    "7":  {"link": ["L_Elbow", "L_F_Paw"],     "color": [0, 255, 255]},
+    "8":  {"link": ["Neck", "R_Shoulder"],     "color": [6, 156, 250]},
+    "9":  {"link": ["R_Shoulder", "R_Elbow"],  "color": [6, 156, 250]},
+    "10": {"link": ["R_Elbow", "R_F_Paw"],     "color": [6, 156, 250]},
+    "11": {"link": ["Root of tail", "L_Hip"],  "color": [0, 255, 255]},
+    "12": {"link": ["L_Hip", "L_Knee"],        "color": [0, 255, 255]},
+    "13": {"link": ["L_Knee", "L_B_Paw"],      "color": [0, 255, 255]},
+    "14": {"link": ["Root of tail", "R_Hip"],  "color": [6, 156, 250]},
+    "15": {"link": ["R_Hip", "R_Knee"],        "color": [6, 156, 250]},
+    "16": {"link": ["R_Knee", "R_B_Paw"],      "color": [6, 156, 250]}
+  }
+}

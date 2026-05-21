@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Animal Pose Keypoint Annotation</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div id="toolbar">
+  <span class="toolbar-title">Keypoint Annotator</span>
+  <button id="btn-save" title="Ctrl+S">Save</button>
+  <button id="btn-export" title="Download JSON">Export</button>
+  <span class="separator"></span>
+  <button id="btn-zoom-out" title="-">Zoom -</button>
+  <input type="number" id="zoom-display" value="100" min="10" max="500" step="10" readonly>
+  <span class="zoom-unit">%</span>
+  <button id="btn-zoom-in" title="+">Zoom +</button>
+  <button id="btn-fit" title="R">Fit</button>
+  <span class="separator"></span>
+  <label class="toggle-label">
+    <input type="checkbox" id="toggle-skeleton" checked> Skeleton
+  </label>
+  <label class="toggle-label">
+    <input type="checkbox" id="toggle-labels" checked> Labels
+  </label>
+  <span class="separator"></span>
+  <label class="toggle-label" id="review-label">
+    <input type="checkbox" id="toggle-reviewed"> Reviewed
+  </label>
+  <span class="separator"></span>
+  <span class="status-legend">
+    <span class="legend-item legend-predicted" title="Directly from ViTPose">&#x25CF; Pred.</span>
+    <span class="legend-item legend-interpolated" title="Estimated, needs review">&#x25C6; Est.</span>
+    <span class="legend-item legend-corrected" title="Manually corrected">&#x2713; Corr.</span>
+  </span>
+  <span class="separator"></span>
+  <button id="btn-mode" title="Toggle review/annotate mode">Annotate</button>
+  <span class="separator"></span>
+  <span id="save-status" class="save-status saved">Saved</span>
+</div>
+
+<div id="main-container">
+  <div id="sidebar">
+    <div class="sidebar-header">
+      <span id="image-count">0 images</span>
+      <input type="text" id="search-box" placeholder="Filter...">
+    </div>
+    <div id="image-list"></div>
+  </div>
+
+  <div id="canvas-container">
+    <canvas id="main-canvas"></canvas>
+    <div id="canvas-placeholder">Loading image...</div>
+  </div>
+
+  <div id="kp-sidebar">
+    <div class="kp-sidebar-header">Keypoints</div>
+    <div id="kp-list"></div>
+  </div>
+</div>
+
+<div id="bottom-bar">
+  <div class="bottom-left">
+    <span id="image-info">No image selected</span>
+  </div>
+  <div class="bottom-center">
+    <button id="btn-prev" title="Arrow Left">◄ Prev</button>
+    <span id="nav-info">- / -</span>
+    <button id="btn-next" title="Arrow Right">Next ►</button>
+    <button id="btn-next-unreviewed" title="Jump to next unreviewed image">▶▶ Unreviewed</button>
+  </div>
+  <div class="bottom-right">
+    <span class="instance-label">Instance:</span>
+    <select id="instance-selector"></select>
+    <button id="btn-add-instance" title="Add new instance">+ New</button>
+    <button id="btn-del-instance" title="Delete current instance">✕ Del</button>
+    <span class="separator"></span>
+    <label class="confidence-label">Conf:</label>
+    <input type="range" id="confidence-slider" min="0" max="100" value="0" step="5">
+    <span id="confidence-value">0.00</span>
+    <span class="separator"></span>
+    <span class="interp-count-label">To review:</span>
+    <span id="interp-count-value">0</span>
+  </div>
+</div>
+
+<div id="help-panel" style="display:none;">
+  <h4>Keyboard Shortcuts</h4>
+  <table>
+    <tr><td><kbd>◄</kbd> <kbd>►</kbd></td><td>Prev / Next image</td></tr>
+    <tr><td><kbd>0</kbd>–<kbd>9</kbd></td><td>Select instance</td></tr>
+    <tr><td><kbd>Delete</kbd></td><td>Hide selected keypoint</td></tr>
+    <tr><td><kbd>Ctrl+S</kbd></td><td>Save annotations</td></tr>
+    <tr><td><kbd>Ctrl+Z</kbd></td><td>Undo last edit</td></tr>
+    <tr><td><kbd>+</kbd> / <kbd>-</kbd></td><td>Zoom in / out</td></tr>
+    <tr><td><kbd>R</kbd></td><td>Reset view (fit)</td></tr>
+    <tr><td><kbd>Tab</kbd></td><td>Next keypoint in instance</td></tr>
+    <tr><td><kbd>Drag keypoint</kbd></td><td>Move keypoint</td></tr>
+    <tr><td><kbd>Drag empty</kbd></td><td>Pan canvas</td></tr>
+    <tr><td><kbd>Scroll</kbd></td><td>Zoom in / out</td></tr>
+    <tr><td><kbd>DblClick canvas</kbd></td><td>Add keypoint to nearest config point</td></tr>
+    <tr><td><kbd>M</kbd></td><td>Mark current image as reviewed</td></tr>
+    <tr><td><kbd>N</kbd></td><td>Jump to next unreviewed image</td></tr>
+  </table>
+  <button id="btn-help-close">Close</button>
+</div>
+
+<div id="help-toggle">?</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
