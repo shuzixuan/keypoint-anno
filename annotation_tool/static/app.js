@@ -19,6 +19,7 @@ const state = {
   panStartX: 0,
   panStartY: 0,
   hoveredKp: null,          // {kpIdx, annIdx}
+  hoverSource: 'mouse',     // 'mouse' or 'sidebar'
 
   // Confidence filter (0–1)
   confThreshold: 0.0,
@@ -80,6 +81,22 @@ async function init() {
   window.addEventListener('resize', () => {
     resizeCanvas();
     render();
+  });
+
+  // Auto-save every 60s if modified
+  setInterval(() => {
+    if (state.modified) {
+      saveAnnotations().then(() => {
+        console.log('Auto-saved');
+      });
+    }
+  }, 60000);
+
+  // Auto-save before closing tab (sendBeacon guarantees delivery)
+  window.addEventListener('beforeunload', () => {
+    if (state.modified) {
+      navigator.sendBeacon('/api/save', '{}');
+    }
   });
 }
 
@@ -495,16 +512,20 @@ function renderKeypointSidebar() {
     const badge = document.createElement('span');
     badge.className = 'kp-page-badge ' + status;
     badge.textContent = status === 'predicted' ? 'P' : status === 'interpolated' ? 'E' : 'C';
+    const statusLabel = status === 'predicted' ? 'Predicted (ViTPose)' : status === 'interpolated' ? 'Estimated (needs review)' : 'Corrected (manual)';
+    badge.title = statusLabel;
 
     // Labeled indicator dot
     const dot = document.createElement('span');
     dot.className = 'kp-status-dot ' + (v > 0 ? 'labeled' : 'unlabeled');
-    dot.title = v > 0 ? (v === 2 ? 'Visible' : 'Occluded') : 'Unlabeled';
+    dot.title = v > 0 ? (v === 2 ? 'Labeled (visible)' : 'Labeled (occluded)') : 'Unlabeled (click to select, then dblclick canvas to place)';
 
     // Confidence
+    const isPerKp = activeAnn && activeAnn.keypoint_scores && activeAnn.keypoint_scores[k] !== undefined;
     const confSpan = document.createElement('span');
-    confSpan.className = 'kp-conf';
-    confSpan.textContent = conf.toFixed(2);
+    confSpan.className = 'kp-conf' + (isPerKp ? '' : ' kp-conf-fallback');
+    confSpan.textContent = isPerKp ? conf.toFixed(2) : '~' + conf.toFixed(2);
+    confSpan.title = isPerKp ? 'Per-keypoint ViTPose score' : 'Annotation-level score (no per-kp data)';
 
     row.appendChild(swatch);
     row.appendChild(nameSpan);
@@ -515,6 +536,7 @@ function renderKeypointSidebar() {
     row.addEventListener('click', () => {
       if (state.mode === 'review') return;
       state.hoveredKp = { annIdx: state.activeInstanceIdx, kpIdx: k };
+      state.hoverSource = 'sidebar';
       render(); // re-render both canvas and sidebar
     });
 
@@ -889,7 +911,12 @@ function onMouseMove(e) {
       }
     }
 
-    if (!found && state.hoveredKp) {
+    // When sidebar has locked a selection, ignore all mouse hovers
+    if (state.hoverSource === 'sidebar') {
+      // Sidebar lock is active — do nothing on mouse move
+      // User must complete operation (drag/place/delete) or click another sidebar row
+    } else if (!found && state.hoveredKp) {
+      // Normal mouse hover — clear when leaving the keypoint
       state.hoveredKp = null;
       render();
     } else if (found && (!state.hoveredKp ||
@@ -921,6 +948,7 @@ function onMouseUp(e) {
       }
     }
     state.dragging = null;
+    state.hoverSource = 'mouse';  // Release sidebar lock after operation
     canvasContainer.classList.remove('dragging-kp');
     render();
   }
@@ -991,6 +1019,7 @@ function onDblClick(e) {
     activeAnn.keypoint_status[targetKp] = 'corrected';
     markModified();
     syncAnnotation(activeAnn);
+    state.hoverSource = 'mouse';  // Release sidebar lock after placement
     render();
   }
 }
@@ -1099,6 +1128,7 @@ function deleteKeypoint() {
   kps[kpIdx * 3 + 2] = 0; // Mark as not annotated
   if (ann.keypoint_status) ann.keypoint_status[kpIdx] = 'interpolated';
   state.hoveredKp = null;
+  state.hoverSource = 'mouse';  // Release sidebar lock after delete
   markModified();
   syncAnnotation(ann);
   render();
