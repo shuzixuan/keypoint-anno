@@ -476,8 +476,9 @@ kbd {
   flex-shrink: 0;
 }
 
-.kp-status-dot.labeled { background: #a6e3a1; }
-.kp-status-dot.unlabeled { background: #585b70; }
+.kp-status-dot.vis-visible { background: #a6e3a1; }
+.kp-status-dot.vis-occluded { background: #fab387; }
+.kp-status-dot.vis-unlabeled { background: #585b70; }
 
 .kp-conf {
   color: #6c7086;
@@ -493,6 +494,11 @@ kbd {
 
 .kp-row.active .kp-conf {
   color: #bac2de;
+}
+
+.kp-conf-fallback {
+  font-style: italic;
+  opacity: 0.7;
 }
 
 .kp-page-badge {

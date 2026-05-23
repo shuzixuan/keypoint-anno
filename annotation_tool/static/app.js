@@ -19,6 +19,7 @@ const state = {
   panStartX: 0,
   panStartY: 0,
   hoveredKp: null,          // {kpIdx, annIdx}
+  hoverSource: 'mouse',     // 'mouse' or 'sidebar'
 
   // Confidence filter (0–1)
   confThreshold: 0.0,
@@ -80,6 +81,22 @@ async function init() {
   window.addEventListener('resize', () => {
     resizeCanvas();
     render();
+  });
+
+  // Auto-save every 60s if modified
+  setInterval(() => {
+    if (state.modified) {
+      saveAnnotations().then(() => {
+        console.log('Auto-saved');
+      });
+    }
+  }, 60000);
+
+  // Auto-save before closing tab (sendBeacon guarantees delivery)
+  window.addEventListener('beforeunload', () => {
+    if (state.modified) {
+      navigator.sendBeacon('/api/save', '{}');
+    }
   });
 }
 
@@ -463,6 +480,19 @@ function renderKeypointSidebar() {
 
   const activeAnn = getActiveAnnotation();
   const numKp = Object.keys(kpConfig).length;
+
+  // Update progress header
+  const header = document.querySelector('.kp-sidebar-header');
+  if (header && activeAnn) {
+    let labeled = 0;
+    for (let k = 0; k < numKp; k++) {
+      if (activeAnn.keypoints[k * 3 + 2] > 0) labeled++;
+    }
+    header.textContent = `Keypoints (${labeled}/${numKp})`;
+  } else if (header) {
+    header.textContent = `Keypoints (0/${numKp})`;
+  }
+
   kpList.innerHTML = '';
 
   for (let k = 0; k < numKp; k++) {
@@ -495,16 +525,21 @@ function renderKeypointSidebar() {
     const badge = document.createElement('span');
     badge.className = 'kp-page-badge ' + status;
     badge.textContent = status === 'predicted' ? 'P' : status === 'interpolated' ? 'E' : 'C';
+    const statusLabel = status === 'predicted' ? 'Predicted (ViTPose)' : status === 'interpolated' ? 'Estimated (needs review)' : 'Corrected (manual)';
+    badge.title = statusLabel;
 
-    // Labeled indicator dot
+    // Visibility indicator dot
     const dot = document.createElement('span');
-    dot.className = 'kp-status-dot ' + (v > 0 ? 'labeled' : 'unlabeled');
-    dot.title = v > 0 ? (v === 2 ? 'Visible' : 'Occluded') : 'Unlabeled';
+    const visClass = v === 2 ? 'vis-visible' : v === 1 ? 'vis-occluded' : 'vis-unlabeled';
+    dot.className = 'kp-status-dot ' + visClass;
+    dot.title = v === 2 ? 'Visible (v=2)' : v === 1 ? 'Occluded (v=1)' : 'Unlabeled (v=0, click to select)';
 
     // Confidence
+    const isPerKp = activeAnn && activeAnn.keypoint_scores && activeAnn.keypoint_scores[k] !== undefined;
     const confSpan = document.createElement('span');
-    confSpan.className = 'kp-conf';
-    confSpan.textContent = conf.toFixed(2);
+    confSpan.className = 'kp-conf' + (isPerKp ? '' : ' kp-conf-fallback');
+    confSpan.textContent = isPerKp ? conf.toFixed(2) : '~' + conf.toFixed(2);
+    confSpan.title = isPerKp ? 'Per-keypoint ViTPose score' : 'Annotation-level score (no per-kp data)';
 
     row.appendChild(swatch);
     row.appendChild(nameSpan);
@@ -515,6 +550,7 @@ function renderKeypointSidebar() {
     row.addEventListener('click', () => {
       if (state.mode === 'review') return;
       state.hoveredKp = { annIdx: state.activeInstanceIdx, kpIdx: k };
+      state.hoverSource = 'sidebar';
       render(); // re-render both canvas and sidebar
     });
 
@@ -889,7 +925,12 @@ function onMouseMove(e) {
       }
     }
 
-    if (!found && state.hoveredKp) {
+    // When sidebar has locked a selection, ignore all mouse hovers
+    if (state.hoverSource === 'sidebar') {
+      // Sidebar lock is active — do nothing on mouse move
+      // User must complete operation (drag/place/delete) or click another sidebar row
+    } else if (!found && state.hoveredKp) {
+      // Normal mouse hover — clear when leaving the keypoint
       state.hoveredKp = null;
       render();
     } else if (found && (!state.hoveredKp ||
@@ -921,6 +962,7 @@ function onMouseUp(e) {
       }
     }
     state.dragging = null;
+    state.hoverSource = 'mouse';  // Release sidebar lock after operation
     canvasContainer.classList.remove('dragging-kp');
     render();
   }
@@ -991,8 +1033,33 @@ function onDblClick(e) {
     activeAnn.keypoint_status[targetKp] = 'corrected';
     markModified();
     syncAnnotation(activeAnn);
+    state.hoverSource = 'sidebar';  // Lock sidebar selection
+    render();
+    // Auto-advance: select next unlabeled keypoint
+    const nextKp = findNextUnlabeled(activeAnn, targetKp + 1);
+    if (nextKp >= 0) {
+      state.hoveredKp = { annIdx: state.activeInstanceIdx, kpIdx: nextKp };
+      state.hoverSource = 'sidebar';
+    } else {
+      state.hoveredKp = null;
+      state.hoverSource = 'mouse';
+    }
     render();
   }
+}
+
+function findNextUnlabeled(ann, startFrom) {
+  const kps = ann.keypoints;
+  const numKp = Object.keys(state.config.keypoints || {}).length;
+  // Search from startFrom to end
+  for (let k = startFrom; k < numKp; k++) {
+    if (kps[k * 3 + 2] === 0) return k;
+  }
+  // Wrap around from beginning
+  for (let k = 0; k < startFrom; k++) {
+    if (kps[k * 3 + 2] === 0) return k;
+  }
+  return -1; // All labeled
 }
 
 // ── Keyboard Shortcuts ──────────────────────────────────────────
@@ -1063,6 +1130,13 @@ function onKeyDown(e) {
         jumpToNextUnreviewed();
       }
       break;
+    case 'v':
+    case 'V':
+      if (!e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        toggleVisibility();
+      }
+      break;
     default:
       // Number keys 0–9: select instance
       if (e.key >= '0' && e.key <= '9' && !e.ctrlKey && !e.metaKey) {
@@ -1099,6 +1173,25 @@ function deleteKeypoint() {
   kps[kpIdx * 3 + 2] = 0; // Mark as not annotated
   if (ann.keypoint_status) ann.keypoint_status[kpIdx] = 'interpolated';
   state.hoveredKp = null;
+  state.hoverSource = 'mouse';  // Release sidebar lock after delete
+  markModified();
+  syncAnnotation(ann);
+  render();
+}
+
+function toggleVisibility() {
+  if (state.mode === 'review') return;
+  const ann = getActiveAnnotation();
+  if (!ann) return;
+  if (!state.hoveredKp || state.hoveredKp.annIdx !== state.activeInstanceIdx) return;
+  const kpIdx = state.hoveredKp.kpIdx;
+  const kps = ann.keypoints;
+  const v = kps[kpIdx * 3 + 2];
+  if (v === 0) return; // Can't toggle unlabeled keypoint
+  const newV = v === 2 ? 1 : 2; // Toggle between visible (2) and occluded (1)
+  const oldStatus = ann.keypoint_status ? ann.keypoint_status[kpIdx] : 'predicted';
+  pushUndo(ann.id, kpIdx, kps[kpIdx * 3], kps[kpIdx * 3 + 1], v, oldStatus);
+  kps[kpIdx * 3 + 2] = newV;
   markModified();
   syncAnnotation(ann);
   render();
