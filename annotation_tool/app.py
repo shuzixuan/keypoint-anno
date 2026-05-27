@@ -97,11 +97,14 @@ def index(request: Request):
 
 @app.get("/api/config")
 def get_config():
-    return {
-        "keypoints": keypoint_config.get("keypoints", {}),
-        "skeleton": keypoint_config.get("skeleton", {}),
-        "num_keypoints": len(keypoint_config.get("keypoints", {})),
-    }
+    return JSONResponse(
+        content={
+            "keypoints": keypoint_config.get("keypoints", {}),
+            "skeleton": keypoint_config.get("skeleton", {}),
+            "num_keypoints": len(keypoint_config.get("keypoints", {})),
+        },
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 @app.get("/api/images")
@@ -117,7 +120,10 @@ def get_images():
             "annotation_count": len(annotations_by_image.get(img["id"], [])),
             "reviewed": img["id"] in reviewed_images,
         })
-    return result
+    return JSONResponse(
+        content=result,
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 @app.post("/api/images/{image_id}/review")
@@ -161,7 +167,10 @@ def get_annotations(image_id: int = Query(...)):
         if "keypoint_status" not in ann_copy:
             ann_copy["keypoint_status"] = ["predicted"] * num_kp
         result.append(ann_copy)
-    return result
+    return JSONResponse(
+        content=result,
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 @app.put("/api/annotations/{annotation_id}")
