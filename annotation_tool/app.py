@@ -139,9 +139,15 @@ def serve_image(image_id: int):
     if not img:
         raise HTTPException(status_code=404, detail="Image not found")
     resolved = img.get("_resolved_path")
-    if not resolved or not os.path.exists(resolved):
-        raise HTTPException(status_code=404, detail="Image file not found on disk")
-    return FileResponse(resolved)
+    if resolved and os.path.exists(resolved):
+        return FileResponse(resolved)
+    # Fallback: re-resolve from file_name against images_dir
+    file_name = img.get("file_name", "")
+    img_path = resolve_image_path(file_name)
+    if img_path.exists():
+        img["_resolved_path"] = str(img_path)
+        return FileResponse(str(img_path))
+    raise HTTPException(status_code=404, detail="Image file not found on disk")
 
 
 @app.get("/api/annotations")
@@ -241,6 +247,10 @@ def save_annotations():
     for img in coco_data.get("images", []):
         img_copy = dict(img)
         img_copy["reviewed"] = img["id"] in reviewed_images
+        # Strip internal fields from output
+        for key in list(img_copy):
+            if key.startswith("_"):
+                del img_copy[key]
         images_out.append(img_copy)
 
     output_data = {
@@ -282,6 +292,10 @@ def export_annotations():
     for img in coco_data.get("images", []):
         img_copy = dict(img)
         img_copy["reviewed"] = img["id"] in reviewed_images
+        # Strip internal fields from output
+        for key in list(img_copy):
+            if key.startswith("_"):
+                del img_copy[key]
         images_out.append(img_copy)
 
     output_data = {
