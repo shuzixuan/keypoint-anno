@@ -138,15 +138,13 @@ def serve_image(image_id: int):
     img = images_by_id.get(image_id)
     if not img:
         raise HTTPException(status_code=404, detail="Image not found")
-    resolved = img.get("_resolved_path")
-    if resolved and os.path.exists(resolved):
-        return FileResponse(resolved)
-    # Fallback: re-resolve from file_name against images_dir
     file_name = img.get("file_name", "")
     img_path = resolve_image_path(file_name)
     if img_path.exists():
-        img["_resolved_path"] = str(img_path)
-        return FileResponse(str(img_path))
+        return FileResponse(
+            str(img_path),
+            headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"},
+        )
     raise HTTPException(status_code=404, detail="Image file not found on disk")
 
 
