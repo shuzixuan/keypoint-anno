@@ -178,7 +178,7 @@ async function loadImageAndAnnotations() {
   img.onerror = () => {
     canvasPlaceholder.textContent = 'Failed to load image.';
   };
-  img.src = `/api/images/${imgMeta.id}`;
+  img.src = `/api/images/${imgMeta.id}?_=${Date.now()}`;
 }
 
 // ── Canvas ───────────────────────────────────────────────────────
